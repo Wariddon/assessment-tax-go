@@ -1,0 +1,14 @@
+DROP TABLE IF EXISTS test CASCADE;
+
+CREATE TABLE test
+(
+    id          SERIAL PRIMARY KEY,
+    test VARCHAR(255) UNIQUE NOT NULL
+);
+
+CREATE TABLE allowances
+(
+    id  SERIAL PRIMARY KEY,
+    allowanceType VARCHAR(255) UNIQUE NOT NULL,
+    amount FLOAT
+);
