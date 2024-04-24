@@ -1,4 +1,27 @@
-# K-Tax โปรแกรมคำนวนภาษี
+## Complete by Wariddon Rattamalee 
+
+- just run docker-compose up and enjoy. 
+- or run manually with 
+```
+ PORT="8080" DATABASE_URL="host=localhost port=5432 user=postgres password=postgres dbname=ktaxes sslmode=disable" ADMIN_USERNAME="adminTax" ADMIN_PASSWORD="admin!" go run main.go
+```
+
+- to test cd tax and run test coverage
+```
+cd tax
+
+DATABASE_URL="host=localhost port=5432 user=postgres password=postgres dbname=ktaxes sslmode=disable" ADMIN_USERNAME="adminTax" ADMIN_PASSWORD="admin!" go test -coverprofile=coverage.out
+
+// gen html coverage file
+go tool cover -html=coverage.out -o coverage.html
+```
+
+
+
+
+# Requirements
+
+## K-Tax โปรแกรมคำนวนภาษี
 
 K-Tax เป็น Application คำนวนภาษี ที่ให้ผู้ใช้งานสามารถคำนวนภาษีบุคคลธรรมดา ตามขั้นบันใดภาษี พร้อมกับคำนวนค่าลดหย่อน และภาษีที่ต้องได้รับคืน
 
