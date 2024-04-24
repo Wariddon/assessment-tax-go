@@ -41,6 +41,7 @@ func main() {
 
 	eTax := e.Group("/tax")
 	eTax.POST("/calculations", tax.CalculationTax)
+	eTax.POST("/calculations/upload-csv", tax.CalculationTaxCSV)
 
 	// Start server
 	go func() {

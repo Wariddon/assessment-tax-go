@@ -1,9 +1,11 @@
 package tax
 
 import (
-	"fmt"
+	"encoding/csv"
+	"io"
 	"math"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 )
@@ -12,6 +14,12 @@ type Calculations struct {
 	TotalIncome float64     `json:"totalIncome"`
 	WHT         float64     `json:"wht"`
 	Allowances  []Allowance `json:"allowances"`
+}
+
+type CalculationsCSV struct {
+	TotalIncome float64 `json:"totalIncome"`
+	WHT         float64 `json:"wht"`
+	Allowances  float64 `json:"allowances"`
 }
 
 type Allowance struct {
@@ -49,6 +57,28 @@ func CalculationTax(c echo.Context) error {
 
 }
 
+func CalculationTaxCSV(c echo.Context) error {
+	// Multipart form
+	form, err := c.MultipartForm()
+	if err != nil {
+		return err
+	}
+	files := form.File["taxFile"]
+
+	src, err := files[0].Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	taxes, err := processTaxCSV(src)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, taxes)
+
+}
 func deductionAllowance(income float64, allowance []Allowance) (float64, error) {
 	//personal deduction tax
 	allowances, err := GetAllowances()
@@ -68,7 +98,6 @@ func deductionAllowance(income float64, allowance []Allowance) (float64, error) 
 			if allowance.Amount > MaxAmount {
 				calAmount = MaxAmount
 			}
-			fmt.Println("calAmount ", calAmount)
 			income -= calAmount
 		}
 	}
@@ -84,8 +113,6 @@ func deductionAllowance(income float64, allowance []Allowance) (float64, error) 
 มากกว่า 2,000,000 อัตราภาษี 35%
 */
 func calculationTax(income float64) ([]TaxLevel, float64) {
-
-	fmt.Println("income", income)
 
 	taxDetails := []TaxLevel{
 		{Level: "0-150,000", Tax: 0.0},
@@ -122,4 +149,64 @@ func calculationTax(income float64) ([]TaxLevel, float64) {
 	}
 
 	return taxDetails, totalTax
+}
+
+func processTaxCSV(file io.Reader) (TaxesCSV, error) {
+
+	var taxesInterface []interface{}
+	reader := csv.NewReader(file)
+
+	// Skip the header row
+	header, err := reader.Read()
+	if err != nil {
+		return TaxesCSV{}, err
+	}
+
+	// Read each record
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return TaxesCSV{}, err
+		}
+
+		totalIncome, _ := strconv.ParseFloat(record[0], 64)
+		wht, _ := strconv.ParseFloat(record[1], 64)
+		amount, _ := strconv.ParseFloat(record[2], 64)
+
+		income := totalIncome
+
+		//Make Object
+		allowance := []Allowance{
+			{AllowanceType: header[2], Amount: amount},
+		}
+
+		income, _ = deductionAllowance(income, allowance)
+
+		calTax := 0.0
+
+		_, calTax = calculationTax(income)
+
+		// Cal WHT
+		calTax -= wht
+		if calTax > 0 {
+			taxData := TaxCSV{
+				TotalIncome: totalIncome,
+				Tax:         calTax,
+			}
+			taxesInterface = append(taxesInterface, taxData)
+		} else {
+			taxData := TaxRefundCSV{
+				TotalIncome: totalIncome,
+				TaxRefund:   math.Abs(calTax),
+			}
+			taxesInterface = append(taxesInterface, taxData)
+		}
+	}
+
+	taxes := TaxesCSV{Taxes: taxesInterface}
+
+	return taxes, nil
 }
