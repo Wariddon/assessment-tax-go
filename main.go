@@ -13,7 +13,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	_ "github.com/lib/pq"
-	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
 // @title Swagger KBTG Assessment Tax - posttest
@@ -28,20 +27,22 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.GET("/healthcheck", healthCheck)
-	e.GET("/swagger/*", echoSwagger.WrapHandler)
-	e.GET("/test", tax.GetTest)
+	// e.GET("/swagger/*", echoSwagger.WrapHandler)
+	// e.GET("/test", tax.GetTest)
 
-	admin := e.Group("/admin")
-	admin.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
+	eAdmin := e.Group("/admin")
+	eAdmin.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
 		if username == os.Getenv("ADMIN_USERNAME") && password == os.Getenv("ADMIN_PASSWORD") {
 			return true, nil
 		}
 		return false, nil
 	}))
-	admin.GET("/test", tax.GetTest)
+	eAdmin.POST("/deductions/personal", tax.DeductionPersonal)
+	eAdmin.POST("/deductions/k-receipt", tax.DeductionKreceipt)
 
-	// tax := e.Group("/tax")
-	// tax.GET
+	eTax := e.Group("/tax")
+	eTax.POST("/calculations", tax.CalculationTax)
+	eTax.POST("/calculations/upload-csv", tax.CalculationTaxCSV)
 
 	// Start server
 	go func() {

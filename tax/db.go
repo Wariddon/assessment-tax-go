@@ -2,7 +2,6 @@ package tax
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -43,7 +42,48 @@ func GetTest(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{Message: err.Error()})
 	}
-	fmt.Printf("tst % #v\n", tst)
+	//fmt.Printf("tst % #v\n", tst)
 
 	return c.JSON(http.StatusOK, tst)
+}
+
+func GetAllowances() (map[string]float64, error) {
+
+	rows, _ := db.Query("SELECT * FROM allowances")
+	allowances := make(map[string]float64)
+
+	for rows.Next() {
+		var id int
+		var allowance string
+		var amount float64
+		err := rows.Scan(&id, &allowance, &amount)
+		if err != nil {
+			return nil, err
+		}
+		allowances[allowance] = amount
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return allowances, nil
+}
+
+func UpdateAllowances(allowance string, amount float64) error {
+
+	stmt, err := db.Prepare(`
+		UPDATE allowances
+		SET amount=$2
+		WHERE allowance=$1
+		`)
+	if err != nil {
+		return err
+	}
+
+	if _, err := stmt.Exec(allowance, amount); err != nil {
+		return err
+	}
+
+	return err
 }
