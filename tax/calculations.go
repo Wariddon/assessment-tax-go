@@ -28,22 +28,40 @@ func CalculationTax(c echo.Context) error {
 
 	totalIncome := cal.TotalIncome
 
+	totalIncome, _ = deductionAllowance(totalIncome, cal.Allowances)
+
 	calTax := 0.0
 
-	//personal deduction tax
+	var taxDetails []TaxLevel
+	taxDetails, calTax = calculationTax(totalIncome)
 
+	// Cal WHT
+	wht := cal.WHT
+	calTax -= wht
+	if calTax > 0 {
+		return c.JSON(http.StatusOK, Tax{Tax: calTax, TaxLevel: taxDetails})
+	} else {
+
+		return c.JSON(http.StatusOK, TaxRefund{TaxRefund: math.Abs(calTax), TaxLevel: taxDetails})
+	}
+
+	//fmt.Println(cal.Allowances[0].Amount)
+
+}
+
+func deductionAllowance(income float64, allowance []Allowance) (float64, error) {
+	//personal deduction tax
 	allowances, err := GetAllowances()
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, Err{Message: err.Error()})
+		return 0, err
 	}
 
 	// deduction personal
-	totalIncome -= allowances["personal"]
-
+	income -= allowances["personal"]
 	delete(allowances, "personal")
 
 	// other deduction if you have
-	for _, allowance := range cal.Allowances {
+	for _, allowance := range allowance {
 		if MaxAmount, ok := allowances[allowance.AllowanceType]; ok {
 
 			calAmount := allowance.Amount
@@ -51,24 +69,11 @@ func CalculationTax(c echo.Context) error {
 				calAmount = MaxAmount
 			}
 			fmt.Println("calAmount ", calAmount)
-			totalIncome -= calAmount
+			income -= calAmount
 		}
-
 	}
 
-	_, calTax = calculationTax(totalIncome)
-
-	// Cal WHT
-	wht := cal.WHT
-	calTax -= wht
-	if calTax > 0 {
-		return c.JSON(http.StatusOK, map[string]float64{"tax": calTax})
-	} else {
-		return c.JSON(http.StatusOK, map[string]float64{"taxRefund": math.Abs(calTax)})
-	}
-
-	//fmt.Println(cal.Allowances[0].Amount)
-
+	return income, nil
 }
 
 /*
