@@ -6,6 +6,8 @@ CREATE TABLE test
     test VARCHAR(255) UNIQUE NOT NULL
 );
 
+DROP TABLE IF EXISTS allowances CASCADE;
+
 CREATE TABLE allowances
 (
     id  SERIAL PRIMARY KEY,

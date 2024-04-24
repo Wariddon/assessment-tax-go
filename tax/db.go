@@ -1,4 +1,4 @@
-package service
+package tax
 
 import (
 	"database/sql"
@@ -47,4 +47,3 @@ func GetTest(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, tst)
 }
-

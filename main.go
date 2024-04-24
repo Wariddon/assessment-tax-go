@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	_ "github.com/Wariddon/assessment-tax/docs"
-	"github.com/Wariddon/assessment-tax/service"
+	"github.com/Wariddon/assessment-tax/tax"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	_ "github.com/lib/pq"
@@ -27,9 +27,10 @@ func main() {
 	// Middleware for logging and recovering from panics
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-
+	e.GET("/healthcheck", healthCheck)
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
-	e.GET("/test", service.GetTest)
+	e.GET("/test", tax.GetTest)
+
 	admin := e.Group("/admin")
 	admin.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
 		if username == os.Getenv("ADMIN_USERNAME") && password == os.Getenv("ADMIN_PASSWORD") {
@@ -37,8 +38,10 @@ func main() {
 		}
 		return false, nil
 	}))
-	admin.GET("/test", service.GetTest)
-	e.GET("/healthcheck", healthCheck)
+	admin.GET("/test", tax.GetTest)
+
+	// tax := e.Group("/tax")
+	// tax.GET
 
 	// Start server
 	go func() {

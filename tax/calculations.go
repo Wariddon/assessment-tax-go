@@ -1,4 +1,4 @@
-package model
+package tax
 
 type Calculations struct {
 	TotalIncome float64     `json:"totalIncome"`

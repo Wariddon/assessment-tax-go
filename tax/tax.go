@@ -1,4 +1,4 @@
-package model
+package tax
 
 type Tax struct {
 	Tax      float64    `json:"tax"`
