@@ -55,9 +55,9 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/Wariddon/assessment-tax/tax/calculations.go (68.6%)</option>
+				<option value="file0">github.com/Wariddon/assessment-tax/tax/calculations.go (89.8%)</option>
 				
-				<option value="file1">github.com/Wariddon/assessment-tax/tax/db.go (60.9%)</option>
+				<option value="file1">github.com/Wariddon/assessment-tax/tax/db.go (62.1%)</option>
 				
 				</select>
 			</div>
@@ -74,9 +74,11 @@
 		<pre class="file" id="file0" style="display: none">package tax
 
 import (
-        "fmt"
+        "encoding/csv"
+        "io"
         "math"
         "net/http"
+        "strconv"
 
         "github.com/labstack/echo/v4"
 )
@@ -87,9 +89,63 @@ type Calculations struct {
         Allowances  []Allowance `json:"allowances"`
 }
 
+type CalculationsCSV struct {
+        TotalIncome float64 `json:"totalIncome"`
+        WHT         float64 `json:"wht"`
+        Allowances  float64 `json:"allowances"`
+}
+
 type Allowance struct {
         AllowanceType string  `json:"allowanceType"`
         Amount        float64 `json:"amount"`
+}
+
+type UpdateDeduction struct {
+        Amount float64 `json:"amount" validate:"required,min=0,max=100000"`
+}
+
+func DeductionKreceipt(c echo.Context) error <span class="cov8" title="1">{
+        de := UpdateDeduction{}
+        err := c.Bind(&amp;de)
+        if err != nil </span><span class="cov8" title="1">{
+                return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
+        }</span>
+
+        <span class="cov8" title="1">if de.Amount &gt; 100000 || de.Amount &lt;= 0 </span><span class="cov8" title="1">{
+                return c.JSON(http.StatusBadRequest, Err{Message: "amount must between 0 and 100000"})
+        }</span>
+
+        <span class="cov8" title="1">err = UpdateAllowances("k-receipt", de.Amount)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
+        }</span>
+
+        <span class="cov8" title="1">return c.JSON(http.StatusOK, map[string]float64{
+                "kReceipt": de.Amount,
+        })</span>
+
+}
+
+func DeductionPersonal(c echo.Context) error <span class="cov8" title="1">{
+        de := UpdateDeduction{}
+        err := c.Bind(&amp;de)
+        if err != nil </span><span class="cov8" title="1">{
+                return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
+        }</span>
+
+        <span class="cov8" title="1">if de.Amount &gt; 100000 || de.Amount &lt;= 0 </span><span class="cov8" title="1">{
+                return c.JSON(http.StatusBadRequest, Err{Message: "amount must between 0 and 100000"})
+        }</span>
+
+        <span class="cov8" title="1">err = UpdateAllowances("personal", de.Amount)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
+        }</span>
+
+        <span class="cov8" title="1">return c.JSON(http.StatusOK, map[string]float64{
+                "personalDeduction": de.Amount,
+        })</span>
+
 }
 
 func CalculationTax(c echo.Context) error <span class="cov8" title="1">{
@@ -122,6 +178,28 @@ func CalculationTax(c echo.Context) error <span class="cov8" title="1">{
 
 }
 
+func CalculationTaxCSV(c echo.Context) error <span class="cov8" title="1">{
+        // Multipart form
+        form, err := c.MultipartForm()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">files := form.File["taxFile"]
+
+        src, err := files[0].Open()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">defer src.Close()
+
+        taxes, err := processTaxCSV(src)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">return c.JSON(http.StatusOK, taxes)</span>
+
+}
 func deductionAllowance(income float64, allowance []Allowance) (float64, error) <span class="cov8" title="1">{
         //personal deduction tax
         allowances, err := GetAllowances()
@@ -141,8 +219,7 @@ func deductionAllowance(income float64, allowance []Allowance) (float64, error) 
                         if allowance.Amount &gt; MaxAmount </span><span class="cov0" title="0">{
                                 calAmount = MaxAmount
                         }</span>
-                        <span class="cov8" title="1">fmt.Println("calAmount ", calAmount)
-                        income -= calAmount</span>
+                        <span class="cov8" title="1">income -= calAmount</span>
                 }
         }
 
@@ -158,8 +235,6 @@ func deductionAllowance(income float64, allowance []Allowance) (float64, error) 
 */
 func calculationTax(income float64) ([]TaxLevel, float64) <span class="cov8" title="1">{
 
-        fmt.Println("income", income)
-
         taxDetails := []TaxLevel{
                 {Level: "0-150,000", Tax: 0.0},
                 {Level: "150,001-500,000", Tax: 0.0},
@@ -169,19 +244,19 @@ func calculationTax(income float64) ([]TaxLevel, float64) <span class="cov8" tit
         }
 
         totalTax := 0.0
-        if income &gt; 2000000 </span><span class="cov0" title="0">{
+        if income &gt; 2000000 </span><span class="cov8" title="1">{
                 tax := (income - 2000000) * 0.35
                 taxDetails[4].Tax = tax
                 totalTax += tax
                 income = 2000000
         }</span>
-        <span class="cov8" title="1">if income &gt; 1000000 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if income &gt; 1000000 </span><span class="cov8" title="1">{
                 tax := (income - 1000000) * 0.20
                 taxDetails[3].Tax = tax
                 totalTax += tax
                 income = 1000000
         }</span>
-        <span class="cov8" title="1">if income &gt; 500000 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if income &gt; 500000 </span><span class="cov8" title="1">{
                 tax := (income - 500000) * 0.15
                 taxDetails[2].Tax = tax
                 totalTax += tax
@@ -195,6 +270,66 @@ func calculationTax(income float64) ([]TaxLevel, float64) <span class="cov8" tit
         }</span>
 
         <span class="cov8" title="1">return taxDetails, totalTax</span>
+}
+
+func processTaxCSV(file io.Reader) (TaxesCSV, error) <span class="cov8" title="1">{
+
+        var taxesInterface []interface{}
+        reader := csv.NewReader(file)
+
+        // Skip the header row
+        header, err := reader.Read()
+        if err != nil </span><span class="cov0" title="0">{
+                return TaxesCSV{}, err
+        }</span>
+
+        // Read each record
+        <span class="cov8" title="1">for </span><span class="cov8" title="1">{
+                record, err := reader.Read()
+                if err == io.EOF </span><span class="cov8" title="1">{
+                        break</span>
+                }
+                <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                        return TaxesCSV{}, err
+                }</span>
+
+                <span class="cov8" title="1">totalIncome, _ := strconv.ParseFloat(record[0], 64)
+                wht, _ := strconv.ParseFloat(record[1], 64)
+                amount, _ := strconv.ParseFloat(record[2], 64)
+
+                income := totalIncome
+
+                //Make Object
+                allowance := []Allowance{
+                        {AllowanceType: header[2], Amount: amount},
+                }
+
+                income, _ = deductionAllowance(income, allowance)
+
+                calTax := 0.0
+
+                _, calTax = calculationTax(income)
+
+                // Cal WHT
+                calTax -= wht
+                if calTax &gt; 0 </span><span class="cov8" title="1">{
+                        taxData := TaxCSV{
+                                TotalIncome: totalIncome,
+                                Tax:         calTax,
+                        }
+                        taxesInterface = append(taxesInterface, taxData)
+                }</span> else<span class="cov8" title="1"> {
+                        taxData := TaxRefundCSV{
+                                TotalIncome: totalIncome,
+                                TaxRefund:   math.Abs(calTax),
+                        }
+                        taxesInterface = append(taxesInterface, taxData)
+                }</span>
+        }
+
+        <span class="cov8" title="1">taxes := TaxesCSV{Taxes: taxesInterface}
+
+        return taxes, nil</span>
 }
 </pre>
 		
@@ -268,6 +403,24 @@ func GetAllowances() (map[string]float64, error) <span class="cov8" title="1">{
         }</span>
 
         <span class="cov8" title="1">return allowances, nil</span>
+}
+
+func UpdateAllowances(allowance string, amount float64) error <span class="cov8" title="1">{
+
+        stmt, err := db.Prepare(`
+                UPDATE allowances
+                SET amount=$2
+                WHERE allowance=$1
+                `)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if _, err := stmt.Exec(allowance, amount); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">return err</span>
 }
 </pre>
 		

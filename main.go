@@ -30,14 +30,15 @@ func main() {
 	// e.GET("/swagger/*", echoSwagger.WrapHandler)
 	// e.GET("/test", tax.GetTest)
 
-	// eAdmin := e.Group("/admin")
-	// eAdmin.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
-	// 	if username == os.Getenv("ADMIN_USERNAME") && password == os.Getenv("ADMIN_PASSWORD") {
-	// 		return true, nil
-	// 	}
-	// 	return false, nil
-	// }))
-	// eAdmin.GET("/test", tax.GetTest)
+	eAdmin := e.Group("/admin")
+	eAdmin.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
+		if username == os.Getenv("ADMIN_USERNAME") && password == os.Getenv("ADMIN_PASSWORD") {
+			return true, nil
+		}
+		return false, nil
+	}))
+	eAdmin.POST("/deductions/personal", tax.DeductionPersonal)
+	eAdmin.POST("/deductions/k-receipt", tax.DeductionKreceipt)
 
 	eTax := e.Group("/tax")
 	eTax.POST("/calculations", tax.CalculationTax)

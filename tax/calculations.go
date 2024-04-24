@@ -27,6 +27,54 @@ type Allowance struct {
 	Amount        float64 `json:"amount"`
 }
 
+type UpdateDeduction struct {
+	Amount float64 `json:"amount" validate:"required,min=0,max=100000"`
+}
+
+func DeductionKreceipt(c echo.Context) error {
+	de := UpdateDeduction{}
+	err := c.Bind(&de)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
+	}
+
+	if de.Amount > 100000 || de.Amount <= 0 {
+		return c.JSON(http.StatusBadRequest, Err{Message: "amount must between 0 and 100000"})
+	}
+
+	err = UpdateAllowances("k-receipt", de.Amount)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]float64{
+		"kReceipt": de.Amount,
+	})
+
+}
+
+func DeductionPersonal(c echo.Context) error {
+	de := UpdateDeduction{}
+	err := c.Bind(&de)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
+	}
+
+	if de.Amount > 100000 || de.Amount <= 0 {
+		return c.JSON(http.StatusBadRequest, Err{Message: "amount must between 0 and 100000"})
+	}
+
+	err = UpdateAllowances("personal", de.Amount)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]float64{
+		"personalDeduction": de.Amount,
+	})
+
+}
+
 func CalculationTax(c echo.Context) error {
 	cal := Calculations{}
 	err := c.Bind(&cal)

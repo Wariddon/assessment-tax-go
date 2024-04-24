@@ -69,3 +69,21 @@ func GetAllowances() (map[string]float64, error) {
 
 	return allowances, nil
 }
+
+func UpdateAllowances(allowance string, amount float64) error {
+
+	stmt, err := db.Prepare(`
+		UPDATE allowances
+		SET amount=$2
+		WHERE allowance=$1
+		`)
+	if err != nil {
+		return err
+	}
+
+	if _, err := stmt.Exec(allowance, amount); err != nil {
+		return err
+	}
+
+	return err
+}
