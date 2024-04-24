@@ -31,17 +31,17 @@ func main() {
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 	e.GET("/test", tax.GetTest)
 
-	admin := e.Group("/admin")
-	admin.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
+	eAdmin := e.Group("/admin")
+	eAdmin.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
 		if username == os.Getenv("ADMIN_USERNAME") && password == os.Getenv("ADMIN_PASSWORD") {
 			return true, nil
 		}
 		return false, nil
 	}))
-	admin.GET("/test", tax.GetTest)
+	eAdmin.GET("/test", tax.GetTest)
 
-	// tax := e.Group("/tax")
-	// tax.GET
+	eTax := e.Group("/tax")
+	eTax.GET("/calculations", tax.CalculationTax)
 
 	// Start server
 	go func() {
